@@ -1,0 +1,70 @@
+﻿@model IEnumerable<ChatManager.Models.User>
+@using ChatManager.Models
+
+@{
+    User sessionUser = OnlineUsers.GetSessionUser();
+    string path = Server.MapPath("~/App_Data/Friends.json");
+
+    if (sessionUser != null)
+    {
+        foreach (var user in Model)
+        {
+            if (user.Id != sessionUser.Id)
+            {
+                var infoFriendship = Friendship.IsFriendShipOnWait(user.Id, sessionUser.Id, path);
+                int declinedId = Friendship.GetUserDeclinedId(infoFriendship.f, path);
+                bool isOnline = OnlineUsers.IsOnLine(user.Id);
+
+                <div class="userContainer" style="font-size:14px;">
+                    <a href="mailto:@user.Email">@Helper.AvatarUser(user, "UserSmallAvatar") </a>
+                    <div style="text-align:center" title="Status de connexion">
+                        @Helper.OnLineStatusIcon(isOnline, user.Blocked)
+                    </div>
+
+
+
+                    @if (Friendship.IsAccepted(infoFriendship.f, path))
+                    {
+                        <span class="icon fa green fa-check-circle" title="Vous êtes amis avec @user.FirstName @user.LastName"></span>
+                        <span id="retire" class="command icon fa red fa-times" title="Retirer @user.FirstName @user.LastName de mes amis" data-friendship-id="@infoFriendship.f"></span>
+                    }
+                    else if (declinedId == sessionUser.Id)
+                    {
+                        <span class="command icon fa red fa-times-circle" title="J'ai decliné la demande de @user.FirstName @user.LastName" data-user-id="@user.Id"></span>
+                        <span id="send" class="command icon fa green fa-plus-circle" title="Envoyer une demande @user.FirstName @user.LastName" data-user-id="@user.Id" data-friendship-id="@infoFriendship.f"></span>
+
+                    }
+                    else if (declinedId == user.Id)
+                    {
+                        <span class="command icon fa red fa-times-circle" title="@user.FirstName @user.LastName a decliné ma demande" data-user-id="@user.Id"></span>
+                    }
+                    else if (infoFriendship.e && infoFriendship.n == sessionUser.Id) // lui de la session envoie la demande
+                    {
+                        <span id="sent" class="command icon fa green fa-clock-o" title="Demande d'ami envoyée à @user.FirstName @user.LastName" data-user-id="@user.Id"></span>
+                        <span id="retire" class="command icon fa red fa-times" title="Annuler ma demande d'ami envoyée à @user.FirstName @user.LastName" data-friendship-id="@infoFriendship.f"></span>
+                    }
+                    else if (infoFriendship.e && infoFriendship.n == user.Id) // lui de la session recoit la demande
+                    {
+                        <span id="accept" class="command icon fa green fa-check" title="Accepter la demande de @user.FirstName @user.LastName" data-user-id="@user.Id" data-friendship-id="@infoFriendship.f"></span>
+                        <span id="reject" class="command icon fa red fa-times" title="Refuser la demande de @user.FirstName @user.LastName" data-friendship-id="@infoFriendship.f"></span>
+                    }
+                    else if (user.Blocked)
+                    {
+                        <span class="icon fa red fa-ban" title="@user.FirstName a été bloqué par l'administrateur"></span>
+                    }
+                    else
+                    {
+                        <span id="send" class="command icon fa green fa-plus-circle" title="Envoyer une demande @user.FirstName @user.LastName" data-user-id="@user.Id"></span>
+                    }
+
+                </div>
+            }
+        }
+    }
+}
+
+@section Scripts{
+    @Scripts.Render("~/bundles/jqueryval")
+}
+
+

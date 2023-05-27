@@ -1,0 +1,28 @@
+﻿@model IEnumerable<ChatManager.Models.User>
+@using ChatManager.Models
+
+@{
+    User sessionUser = OnlineUsers.GetSessionUser();
+    string path = Server.MapPath("~/App_Data/Friends.json");
+
+
+    if (sessionUser != null)
+    {
+        foreach (var user in Model.ToList())
+        {
+
+            var friendshipInfromation = Friendship.IsFriendShipOnWait(user.Id, sessionUser.Id, path);
+
+            if (Friendship.IsAccepted(friendshipInfromation.f, path))
+            {
+                var url = new System.Web.Mvc.UrlHelper(HttpContext.Current.Request.RequestContext);
+
+                <div class="unselectedTarget target" data-user-id=@user.Id>
+                    <div class="UserSmallAvatar" style="background: url(@url.Content(user.GetAvatarURL()))">
+                    </div>
+                </div>
+            }
+        }
+
+    }
+}

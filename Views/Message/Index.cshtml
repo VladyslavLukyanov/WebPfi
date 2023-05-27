@@ -1,0 +1,293 @@
+﻿@model IEnumerable<ChatManager.Models.User>
+@using ChatManager.Models
+
+<div style="display:grid; grid-template-columns:60px auto; align-items:center;">
+    <img src="../favicon.png" style="width:56px" />
+    <h3>Salle de discussions</h3>
+</div>
+
+<hr />
+@{
+    List<User> users = DB.Users.ToList();
+    User sessionUser = OnlineUsers.GetSessionUser();
+    int a = -1;
+    if (Session["FriendId"] != null)
+    {
+        a = (int)Session["FriendId"];
+    }
+
+}
+
+@{
+    if (sessionUser != null && !sessionUser.IsAdmin)
+    {
+        <div class="main">
+            <div style="display:grid; grid-template-columns:60px auto; column-gap:10px;">
+                <div class="friendsListContainer" id="friendsListContainer"
+                     title="Cliquez sur un de vos amis pour clavarder avec lui...">
+                </div>
+
+                <div>
+                    <div class="messagesPanel" id="messagesPanel" title="Cliquez sur un de vos messages pour l'éditer...">
+                    </div>
+                    <div class="sendMessageLayout">
+                        <input id="message"
+                               class="form-control"
+                               style="width:100% !important; max-width:1000px !important;"
+                               placeholder="Tapez votre message ici ..."
+                               title="Les urls d'image sont prises en compte." />
+                        <span id="send"
+                              class="icon fa fa-paper-plane"
+                              title="Envoyer"
+                              data-placement="bottom"
+                              style="display:none">
+                        </span>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="main">
+            <div id="usersMessagesContainer">
+
+            </div>
+        </div>
+    }
+}
+
+
+@section Scripts{
+
+    @Scripts.Render("~/bundles/jqueryval")
+<script>
+        window.addEventListener('DOMContentLoaded', () => {
+            let partialRefresh = new PartialRefresh("GetMessages", "messagesPanel", 5, getMessages);
+            let friendsListRefresh = new PartialRefresh("GetFriends", "friendsListContainer", 5, getFriend);
+            let usersMessagesContainer = new PartialRefresh("GetAllMessages", "usersMessagesContainer", 1, getAllMessages);;
+            let selectedElement = null;
+            let parent = null;
+            let userId = null;
+            let canChange = true;
+            let currentMessage = null;
+            let nouveauMessage = null;
+            let id = null;
+
+
+            // CREATION DES ELEMENTS
+            let btnsDiv = document.createElement("div");
+            let input = document.createElement("input");
+            let spanDelete = document.createElement("span");
+            let spanSave = document.createElement("span");
+
+            spanSave.setAttribute("id", "btn-save");
+            spanSave.classList.add("icon", "fa", "fa-check", "smallerIcon");
+            spanSave.setAttribute("title", "Modifier mon message");
+
+            spanDelete.setAttribute("id", "btn-delete");
+            spanDelete.classList.add("icon", "fa", "fa-times", "smallerIcon");
+
+            input.setAttribute("id", "newMessage");
+            input.classList.add("sent", "form-control");
+
+            function getMessages() {
+
+                $("#send").off('click').on('click', getAndSend);
+
+                $("#message").off('keydown').on("keydown", (e) => {
+                    if (e.key === 'Enter') {
+                        getAndSend();
+                    }
+                });
+                
+                messageStateChanged();
+            }
+
+            const getAndSend = () => {
+                let contenu = $("#message").val();
+                let sessionUserId = @sessionUser.Id;
+                
+                sendMessage(@sessionUser.Id, contenu);
+            }
+
+            const sendMessage = (sessionUserId, contenu) => {
+                $.ajax({
+                    url: "SendMessage",
+                    method: "POST",
+                    data: { expediteurId: sessionUserId, receveurId: userId, contenu: contenu },
+                    success: (response) => {
+                        partialRefresh.refresh(true);
+                        usersMessagesContainer.refresh(true);
+                        $("#message").val('');
+                    },
+                    error: (response) => {
+                        console.log(response);
+                    }
+                });
+            }
+
+            function getFriend() {
+
+                document.querySelectorAll('.target').forEach(i => {
+
+                    userId = $(i).data('user-id');
+                    let a = @a;
+
+                    if (a && userId == a) {
+                        setElementClass("unselectedTarget", "selectedTarget", i);
+                        selectedElement = i;
+                        $("#send").css('display', 'block');
+                    }
+
+                    i.addEventListener('click', (e) => {
+
+                        $("#send").css('display', 'block');
+                        userId = $(i).data('user-id');
+
+                        if (selectedElement !== null) {
+                            setElementClass('selectedTarget', 'unselectedTarget', selectedElement);
+                        }
+
+                        console.log(document.querySelectorAll("ssadas"));
+
+                        setElementClass("unselectedTarget", "selectedTarget", i);
+                        selectedElement = i;
+
+
+                        $.ajax({
+                            url: "ChangeFriend",
+                            method: "GET",
+                            data: { friendId: userId },
+                            success: (response) => { // retourne la liste d'amis
+                                console.log(response);
+                                partialRefresh.refresh(true);
+                            }
+                        });
+
+                    });
+                });
+            }
+
+
+            const modifyDeleteMessage = (container, content, url) => {
+
+                data = { idMessage: id, newContent: content };
+
+                if (url === "DeleteMessage") data = {idMessage : id}
+
+                $.ajax({
+                    url: url,
+                    method: "POST",
+                    data: data,
+                    async: false,
+                    success: (result) => {
+                        partialRefresh.refresh(true);
+                        usersMessagesContainer.refresh(true);
+                        console.log(result);
+                        if (url === "ModifyMessage")
+                            container.html(nouveauMessage);
+                    }
+                });
+            }
+
+            const removeElements = () => {
+                input.remove();
+                spanSave.remove();
+                spanDelete.remove();
+            } 
+
+            // modifier le contenu du messages
+            const messageStateChanged = () => {
+
+                document.querySelectorAll(".spanSent").forEach(m => {
+                    m.addEventListener("click", (e) => {
+                        if (canChange) {
+                            canChange = false;
+                            id = $(m).data("message-id");
+                            parent = m.closest(".sent"); // prends le div parent du span clicked
+
+                            $(parent).css("background-color", "white");
+                            $(parent).css("display", "inline-flex");
+                            $(input).css("background-color", "#faebd7");
+
+                            currentMessage = m.textContent;
+                            input.value = currentMessage.trim();
+
+
+                            viderContenu(m);
+
+                            // ajout des elements
+                            parent.append(input);
+                            parent.append(btnsDiv);
+                            btnsDiv.append(spanSave);
+                            btnsDiv.append(spanDelete);
+
+                        }
+                    });
+                });
+
+                $(spanSave).off("click").on("click", () => {
+                    canChange = true;
+                    $(parent).css("background-color", "#f8cd53");
+
+                    messageContainer = $(`#span\\+${id}`);
+                    nouveauMessage = $("#newMessage").val();
+
+                    if (currentMessage.trim() !== nouveauMessage) {
+                        modifyDeleteMessage(messageContainer, nouveauMessage, "ModifyMessage");
+                    } else {
+                        messageContainer.html(currentMessage);
+                    }
+
+
+                    removeElements();
+                });
+
+                $(spanDelete).off("click").on("click", () => {
+                    canChange = true;
+                    console.log("Delete");
+                    modifyDeleteMessage(id, "", "DeleteMessage");
+                });
+
+                document.querySelector('body').addEventListener("keydown", (e) => {
+                    if (e.key === 'Escape') {
+
+                            $(parent).css("background-color", "#f8cd53");
+                        $(`#span\\+${id}`).html(currentMessage);
+                        removeElements();
+                        canChange = true;
+                    }
+                });
+               
+            }
+
+            const viderContenu = (element) => {
+                element.textContent = '';
+            }
+
+            function setElementClass(toRemove, toAdd, element) {
+                element.classList.remove(toRemove);
+                element.classList.add(toAdd);
+            }
+
+            function getAllMessages () {
+                document.querySelectorAll(".delete").forEach(b => {
+                    b.addEventListener("click", (e) => {
+                        $.ajax({
+                            url: "DeleteMessage",
+                            method: "POST",
+                            data: { idMessage: b.id },
+                            success: (result) => {
+                                usersMessagesContainer.refresh(true);
+                            }
+                        });
+                    });
+                });
+            }
+        });
+</script>
+}
+
+

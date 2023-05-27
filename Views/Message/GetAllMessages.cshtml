@@ -1,0 +1,45 @@
+﻿@model IEnumerable<ChatManager.Models.Message>
+@using ChatManager.Models
+@{
+    Message.RemplirListeMessages(Server.MapPath("~/App_Data/Messages.json"));
+    User sessionUser = OnlineUsers.GetSessionUser();
+
+    var url = new System.Web.Mvc.UrlHelper(HttpContext.Current.Request.RequestContext);
+    var messagesCopy = Message.Messages.ToList();
+    if (sessionUser != null)
+    {
+        foreach (var item in messagesCopy)
+        {
+            User receveur = DB.Users.Get(item.IdReceveur);
+            User expediteur = DB.Users.Get(item.IdExpediteur);
+            if (receveur != null && expediteur != null)
+            {
+                <div class="userContainer" style="font-size:14px;">
+                    <div class="userItem">
+                        <div title="@expediteur.FirstName" class="UserMediumAvatar" style="background: url(@url.Content(expediteur.GetAvatarURL()));">
+                        </div>
+                        <div title="@receveur.FirstName" class="UserMediumAvatar" style="background: url(@url.Content(receveur.GetAvatarURL()));">
+                        </div>
+                        <span id="@item.Id" class="icon fa fa-times delete"></span>
+
+                    </div>
+
+                    <div class="sentLayout" id="sentLayout">
+                        <div class="sent" title="@item.Date" id="@item.Id">
+                            <span id="@item.Id" data-message-id="@item.Id" style="max-width:250px !important; overflow:hidden !important; white-space:nowrap; text-overflow:ellipsis;">
+                                @Helper.ParseContent(item.Contenu)
+                            </span>
+                        </div>
+                    </div>
+
+
+
+                </div>
+            }
+        }
+
+    }
+}
+
+
+

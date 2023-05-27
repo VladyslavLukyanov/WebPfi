@@ -1,0 +1,181 @@
+﻿@model IEnumerable<ChatManager.Models.User>
+@using Newtonsoft.Json;
+@using ChatManager.Models;
+@using System.Collections.Generic;
+
+
+<div class="container body-content">
+    <div style="display:grid; grid-template-columns: 65px auto; align-items:center">
+        <img src="../friendships.png" style="width:56px" />
+        <h2>Gestion des amitiés </h2>
+    </div>
+    <hr />
+    <div style="display:grid; grid-template-columns:295px 35px; column-gap:10px; margin-bottom:10px">
+        <input type="search" id="Search" placeholder="recherche..." class="form-control" value="" />
+        <span id="SearchCommand" class="icon fa fa-search" style="margin-top:5px"></span>
+    </div>
+
+
+    <div class="friendfilters">
+        <input type="checkbox" id="filter_NotFriend" class="filter" @Algos.IsChecked((int)Session["NotFriendsFilter"]) />
+        <label for="filter_NotFriend" class="fa green fa-plus-circle" title="Afficher/masquer les usagers qui sont pas encore ami avec vous"></label>
+
+        <input type="checkbox" id="filter_Request" class="filter" @Algos.IsChecked((int)Session["Request"]) />
+        <label for="filter_Request" class="fa green fa-check" title="Afficher/masquer les requêtes d'amitié reçues"></label>
+
+        <input type="checkbox" id="filter_Pending" class="filter" @Algos.IsChecked((int)Session["Pending"]) />
+        <label for="filter_Pending" class=" fa green fa-clock-o" title="Afficher/masquer les requêtes d'amitié envoyées en attente de réponse"></label>
+
+        <input type="checkbox" id="filter_Friend" class="filter" @Algos.IsChecked((int)Session["Friend"]) />
+        <label for="filter_Friend" class="fa green fa-check-circle" title="Afficher/masquer tous les amis"></label>
+
+        <input type="checkbox" id="filter_Refused" class="filter" @Algos.IsChecked((int)Session["Refused"]) />
+        <label for="filter_Refused" class="fa red fa-times-circle" title="Afficher/masquer toutes les demandes refusées ou déclinées"></label>
+
+        <input type="checkbox" id="filter_Blocked" class="filter" @Algos.IsChecked((int)Session["BlockedFilter"]) />
+        <label for="filter_Blocked" class="fa red fa-ban" title="Afficher/masquer tous les usagers bloqués"></label>
+    </div>
+
+    <hr />
+    <div class="main">
+        <!-- FRIENDS MANAGMENT -->
+        <div id="friendshipsListContainer">
+
+        </div>
+    </div>
+
+
+
+    @section Scripts {
+            @Scripts.Render("~/bundles/jqueryval")
+
+            <script>
+            window.addEventListener('DOMContentLoaded', () => {
+                let partialRefresh = new PartialRefresh("/Friendships/GetUsers", "friendshipsListContainer", 5, UpdatefriendShipsCallback);
+                
+
+                $("#filter_Blocked").on('click', (e) => {
+                    setFilter("Blocked", e.target);
+                });
+
+                $("#filter_NotFriend").on('click', (e) => {
+                    setFilter("NotFriends", e.target);
+                })
+
+                $("#filter_Pending").on("click", (e) => {
+                    setFilter("Pending", e.target);
+                });
+
+                $("#filter_Request").on("click", (e) => {
+                    setFilter("IsOnRequest", e.target);
+                });
+
+                $("#filter_Refused").on("click", (e) => {
+                    setFilter("RefusedFriendship", e.target);
+                })
+
+                $("#filter_Friend").on("click", (e) => {
+                    setFilter("AreFriends", e.target);
+                });
+
+                function setFilter(url, box) {
+
+                    $.ajax({
+                        url: url,
+                        method: "GET",
+                        data: { isChecked: box.checked },
+                        success: (m) => {
+                            getUsers();
+                        }
+                    });
+                }
+
+                document.querySelector("#SearchCommand").addEventListener('click', search);
+
+                document.querySelector("#Search").addEventListener('keydown', function (e) {
+                    if (e.keyCode === 13)  // enter
+                        search();
+                });
+
+                function search() {
+                    let userNom = $('#Search').val();
+
+                    $.ajax({
+                        url: "/Friendships/Search",
+                        method: "GET",
+                        data: { text: userNom },
+                        success: () => {
+                            getUsers();
+                        },
+                        error: (error) => {
+                            console.log(error);
+                        }
+                    });
+                }
+
+                function UpdatefriendShipsCallback() {
+                    document.querySelectorAll('#send, #reject, #retire, #accept').forEach(b => {
+                        b.addEventListener('click', (e) => {
+
+                            let sessionUserId = @OnlineUsers.GetSessionUser().Id;
+
+                            let url = "RetireFriendShip";
+                            let action = e.target.id;
+                            let friendshipId = $(b).data('friendship-id');
+                            let data = { friendshipId: friendshipId};
+
+                            switch (action) {
+                                case "send":
+                                    if (friendshipId == null)
+                                        friendshipId = -1;
+
+                                    data = {
+                                        userId : $(b).data('user-id'),
+                                        targetUserId : sessionUserId,
+                                        friendshipId: friendshipId
+                                    };
+                                    url = "CreateFriendship";
+
+                                    break;
+
+                                case "reject":
+                                case "accept":
+                                    url = "ModifyFriendShip";
+                                    data = { friendshipId: $(b).data('friendship-id'), response: false, targetUserId: sessionUserId };
+
+                                    if (action === 'accept') {
+                                        data.response = true;
+                                    }
+                                    break;
+                            }
+
+                           $.ajax({
+                                url: url,
+                                method: "GET",
+                                data: data,
+                                success: () => {
+                                    partialRefresh.refresh(true);
+                                },
+                                error: (error) => {
+                                    console.log(error);
+                                }
+                            });
+                        })
+                    });
+                }
+
+                const getUsers = () => {
+                    $.ajax({
+                        url: "/Friendships/GetUsers",
+                        method: "GET",
+                        data: { forceRefresh: true },
+                        success: () => {
+                            partialRefresh.refresh(true);
+                        }
+                    });
+                }
+            });
+            </script>
+        }
+
+    </div>

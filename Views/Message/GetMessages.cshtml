@@ -1,0 +1,111 @@
+﻿@model IEnumerable<ChatManager.Models.Message>
+@using ChatManager.Models
+@{
+    List<User> users = DB.Users.ToList();
+    User userSession = OnlineUsers.GetSessionUser();
+    DateTime date = DateTime.Now;
+    bool first = true;
+    string chemin = Server.MapPath("~/App_Data/Messages.json");
+    string cheminFriend = Server.MapPath("~/App_Data/Friends.json");
+    Message.RemplirListeMessages(chemin);
+    var copy = Message.Messages.ToList();
+
+
+    if (userSession != null)
+    {
+        if (!userSession.IsAdmin)
+        {
+            User friend = DB.Users.Get((int)Session["FriendId"]);
+            var friendshipInfo = Friendship.IsFriendShipOnWait((int)Session["FriendId"], userSession.Id, cheminFriend);
+
+            if (DB.Friends.Get(friendshipInfo.f) == null)
+            {
+                friend = null;
+            }
+
+            if (friend != null)
+            {
+                var url = new System.Web.Mvc.UrlHelper(HttpContext.Current.Request.RequestContext);
+
+                <div class="messagesHeader">
+                    <h4>Conversation avec </h4> <br />
+                    <div style="display:flex; align-items:center;">
+                        <div class="UserMediumAvatar" style="background: url(@url.Content(friend.GetAvatarURL()));">
+                        </div>
+                        <div style="margin-left:10px;">@friend.FirstName @friend.LastName</div>
+                    </div>
+                </div>
+
+                for (int i = 0; i < copy.Count; i++)
+                {
+                    if (copy[i].IdExpediteur == userSession.Id && copy[i].IdReceveur == (int)Session["FriendId"])
+                    {
+                        if ((int)Session["FriendId"] == copy[i].IdReceveur && copy[i].IdExpediteur == userSession.Id && first)
+                        {
+                            date = copy[i].Date;
+                            <div class="messageTime">@date.ToString("dd MMMM yyyy - HH:mm")</div>
+                            first = false;
+                        }
+
+
+                        else if ((int)Session["FriendId"] == copy[i].IdReceveur && copy[i].IdExpediteur == userSession.Id && !first)
+                        {
+                            // Calculer la différence de temps entre le message actuel et le message précédent
+                            TimeSpan timeDifference = copy[i].Date - date;
+
+                            // Vérifier si la différence de temps est supérieure à 30 minutes (30 minutes = 30 minutes * 60 secondes * 1000 millisecondes)
+                            if (timeDifference.TotalMilliseconds > 30 * 60 * 1000)
+                            {
+                                date = copy[i].Date;
+                                <div class="messageTime">@date.ToString("dd MMMM yyyy - HH:mm")</div>
+                            }
+                        }
+                        <div class="sentLayout" id="sentLayout">
+                            <div class="sent" title="@copy[i].Date" id="@copy[i].Id">
+                                <span class="spanSent" id="span+@copy[i].Id" data-message-id="@copy[i].Id" style="max-width:150px !important; overflow:hidden !important; white-space:nowrap; text-overflow:ellipsis;">
+                                    @Helper.ParseContent(copy[i].Contenu)
+                                </span>
+                            </div>
+                        </div>
+                    }
+                    else if (copy[i].IdExpediteur == (int)Session["FriendId"] && copy[i].IdReceveur == userSession.Id)
+                    {
+                        if (userSession.Id == copy[i].IdReceveur && copy[i].IdExpediteur == (int)Session["FriendId"] && first)
+                        {
+                            date = copy[i].Date;
+                            <div class="messageTime">@date.ToString("dd MMMM yyyy - HH:mm")</div>
+                            first = false;
+                        }
+
+
+                        else if (userSession.Id == copy[i].IdReceveur && copy[i].IdExpediteur == (int)Session["FriendId"] && !first)
+                        {
+                            // Calculer la différence de temps entre le message actuel et le message précédent
+                            TimeSpan timeDifference = copy[i].Date - date;
+
+                            // Vérifier si la différence de temps est supérieure à 30 minutes (30 minutes = 30 minutes * 60 secondes * 1000 millisecondes)
+                            if (timeDifference.TotalMilliseconds > 30 * 60 * 1000)
+                            {
+                                date = copy[i].Date;
+                                <div class="messageTime">@date.ToString("dd MMMM yyyy - HH:mm")</div>
+                            }
+                        }
+                        <div class="receivedLayout">
+                            <div class="received" title="@copy[i].Date" id="@copy[i].Id">
+                                <span style="max-width:150px !important; overflow:hidden !important; white-space:nowrap; text-overflow:ellipsis;">
+                                    @Helper.ParseContent(copy[i].Contenu)
+                                </span>
+                            </div>
+                        </div>
+                    }
+                }
+            }
+            else
+            {
+                <div class="messagesHeader"><h4>Selectionnez un ami...</h4></div>
+            }
+        }
+    }
+}
+
+

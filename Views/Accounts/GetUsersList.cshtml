@@ -1,0 +1,52 @@
+﻿@model IEnumerable<ChatManager.Models.User>
+
+@foreach (var item in Model)
+{
+    if (item.Id != ChatManager.Models.OnlineUsers.GetSessionUser().Id)
+    {
+        bool isOnline = ChatManager.Models.OnlineUsers.IsOnLine(item.Id);
+        <div class="userContainer" style="font-size:14px;">
+            @{
+                string link = "Profil?id=" + item.Id + "&admin=true";
+
+                if (item.IsAdmin)
+                {
+                    link = "#";
+                }
+            }
+            <a href="@link">
+                @Helper.AvatarUser(item, "UserSmallAvatar")
+            </a>
+            <div style="text-align:center" title="Status de connexion">
+                @Helper.OnLineStatusIcon(isOnline, item.Blocked)
+            </div>
+
+            <div style="text-align:center">
+                @Helper.UserTypeIcon(item.UserTypeId)
+            </div>
+            <div style="text-align:center" title="Status du compte">
+                @Helper.Checked(item.Verified)
+            </div>
+            <div style="text-align:center">
+                @if (!item.IsAdmin)
+                {
+                    <input type="checkbox" id="blocked_@item.Id" class="CB_Blocked" @(item.Blocked ? "checked" : "") title="Ce compte est @(item.Blocked ? "bloqué" : "non bloqué")" />
+                }
+                else
+                {
+                    <div></div>
+                }
+            </div>
+            <div>
+                @if (!item.IsAdmin)
+                {
+                    <div id="delete_@item.Id" class="DELETE_USER icon red fa fa-times-circle" title="Effacer l'usager @item.GetFullName()"></div>
+                }
+                else
+                {
+                    <div></div>
+                }
+            </div>
+        </div>
+    }
+}

@@ -14,14 +14,16 @@
             User expediteur = DB.Users.Get(item.IdExpediteur);
             if (receveur != null && expediteur != null)
             {
-                <div class="userContainer" style="font-size:14px;">
-                    <div class="userItem">
-                        <div title="@expediteur.FirstName" class="UserMediumAvatar" style="background: url(@url.Content(expediteur.GetAvatarURL()));">
-                        </div>
-                        <div title="@receveur.FirstName" class="UserMediumAvatar" style="background: url(@url.Content(receveur.GetAvatarURL()));">
-                        </div>
-                        <span id="@item.Id" class="icon fa fa-times delete"></span>
+                <div style="display:flex">
+                    <div class="userContainer" style="font-size:14px;">
+                        <div class="userItem">
+                            <div title="@expediteur.FirstName" class="UserMediumAvatar" style="background: url(@url.Content(expediteur.GetAvatarURL()));">
+                            </div>
+                            <div title="@receveur.FirstName" class="UserMediumAvatar" style="background: url(@url.Content(receveur.GetAvatarURL()));">
+                            </div>
+                            <span id="@item.Id" class="icon fa fa-times delete"></span>
 
+                        </div>
                     </div>
 
                     <div class="sentLayout" id="sentLayout">
@@ -31,9 +33,7 @@
                             </span>
                         </div>
                     </div>
-
-
-
+                
                 </div>
             }
         }

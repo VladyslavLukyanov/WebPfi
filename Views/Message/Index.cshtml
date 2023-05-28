@@ -121,6 +121,8 @@
                         partialRefresh.refresh(true);
                         usersMessagesContainer.refresh(true);
                         $("#message").val('');
+                        partialRefresh.refresh(true);
+
                     },
                     error: (response) => {
                         console.log(response);
